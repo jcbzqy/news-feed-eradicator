@@ -4,7 +4,7 @@ const site: Site = {
 	id: siteId('hackernews'),
 	title: 'Hacker News',
 	hosts: ['news.ycombinator.com'],
-	paths: ['/', '/news', '/front', '/newest', '/newcomments', '/ask', '/show'],
+	paths: ['/', '/news', '/front', '/newest', '/newcomments', '/ask', '/show', '/best', '/classic'],
 	regions: [
 		{
 			id: regionId('main'),
