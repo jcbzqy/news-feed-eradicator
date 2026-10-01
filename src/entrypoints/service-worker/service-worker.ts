@@ -3,6 +3,7 @@ import type { Path, PathList, Region, Site, SiteId } from '/types/sitelist';
 import type { DesiredRegionState, RequestQuoteResponse, FromServiceWorkerMessage, ToServiceWorkerMessage } from '/messaging/messages';
 import { loadHideQuotes, loadQuoteLists, loadRegionHideStyle, loadRegionsForSite, loadSitelist, loadSnoozeUntil, loadWidgetStyle, migrationPromise, saveQuoteEnabled, saveSiteEnabled, saveSnoozeUntil, saveThemeForSite } from '/storage/storage';
 import { originsForSite } from '/lib/util';
+import { textFilterSelector } from '/lib/text-filter';
 import { BuiltinQuotes, type Quote } from '/quote';
 import type { QuoteListId, StorageLocalV2, Theme } from '/storage/schema';
 import themeDark from '/themes/dark.css?raw';
@@ -171,7 +172,9 @@ const handleMessage = async (msg: ToServiceWorkerMessage, sender: MessageSender)
 
 					const enabled = siteOptions.regionEnabledOverride[region.id] ?? region.default ?? true;
 
-					const selector = region.selectors.map(sanitizeSelector).join(',');
+					const selector = region.keepText == null
+						? region.selectors.map(sanitizeSelector).join(',')
+						: textFilterSelector(region);
 					return { config: region, css: `${selector} { ${cssForType(region.type, regionHideStyle)} }`, enabled } ;
 				});
 

@@ -1,5 +1,7 @@
 // Injected into the relevant site
 import { getBrowser } from '../../lib/webextension';
+import { textFilterSelector, updateTextFilter } from '../../lib/text-filter';
+import theDiff from '../../sitelist/thediff';
 import type { FromServiceWorkerMessage, DesiredRegionState, ToServiceWorkerMessage } from '../../messaging/messages';
 import { QuoteWidget } from '../../shared/quote-widget';
 import type { Region, RegionId, Site, SiteId } from '../../types/sitelist';
@@ -14,6 +16,26 @@ const browser = getBrowser();
 const token = Math.floor(Math.random() * 1000000);
 
 const sendMessage = (message: ToServiceWorkerMessage) => browser.runtime.sendMessage(message);
+
+// At document_start, hide unclassified archive entries before the settings reply.
+// The normal region CSS replaces this temporary rule, including when disabled.
+let startupStyle: HTMLStyleElement | undefined;
+if (theDiff.hosts.includes(location.hostname) && theDiff.paths.some(path =>
+	typeof path === 'string' ? path === location.pathname : new RegExp(path.regexp).test(location.pathname)
+)) {
+	startupStyle = document.createElement('style');
+	startupStyle.textContent = theDiff.regions.map(region =>
+		`${textFilterSelector(region)} { display: none !important; }`
+	).join('\n');
+	const attach = () => {
+		if (document.documentElement == null) return;
+		document.documentElement.appendChild(startupStyle!);
+		startupObserver.disconnect();
+	};
+	const startupObserver = new MutationObserver(attach);
+	startupObserver.observe(document, { childList: true });
+	attach();
+}
 
 const domReady = new Promise(resolve => {
 
@@ -99,6 +121,19 @@ function updateOverlay(overlay: OverlayState) {
 /**
  * Check the DOM ongoing to see if any injected elements need to be updated
  */
+function updateTextFilters() {
+	for (const region of state.regions.values()) {
+		if (isRegionBlockActive(region)) updateTextFilter(document, region.config);
+	}
+}
+
+// Mutation callbacks run before painting newly inserted or changed titles.
+new MutationObserver(updateTextFilters).observe(document, {
+	childList: true,
+	characterData: true,
+	subtree: true,
+});
+
 function checkDom() {
 	for (const overlay of state.overlays) {
 		updateOverlay(overlay);
@@ -302,7 +337,10 @@ const patchState = (regions: DesiredRegionState[]) => {
 		}
 	}
 
+	updateTextFilters();
 	setCss(css);
+	startupStyle?.remove();
+	startupStyle = undefined;
 }
 
 const isRegionBlockActive = (region: RegionState) => region.enabled && !isSnoozing()

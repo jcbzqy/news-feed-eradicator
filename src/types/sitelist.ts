@@ -30,6 +30,8 @@ export type Inject = {
 export type Region = {
 	id: RegionId,
 	selectors: string[],
+	// Exempt entries whose descendant text includes this string (case-insensitive).
+	keepText?: { selector: string; includes: string },
 	title: string,
 	type: 'hide' | 'remove' | 'dull',
 	paths: 'inherit' | '*' | PathList,
